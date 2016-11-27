@@ -113,7 +113,7 @@ class DataSet(object):
       if reshape:
         #assert images.shape[3] == 1
         images = images.reshape(images.shape[0],
-                                images.shape[1] * images.shape[2] * 3)
+                                images.shape[1] * images.shape[2] * images.shape[3])
       if dtype == dtypes.float32:
         # Convert from [0, 255] -> [0.0, 1.0].
         images = images.astype(numpy.float32)
