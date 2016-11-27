@@ -38,14 +38,14 @@ def max_pool_2x2(x):
 def main(_):
   mnist = read_data_sets(FLAGS.data_dir, one_hot=True, dtype=dtypes.uint8)
   # Create the model
-  x = tf.placeholder(tf.float32, [None, 784])
-  W = tf.Variable(tf.zeros([784, 10]))
-  b = tf.Variable(tf.zeros([10]))
+  x = tf.placeholder(tf.float32, [None, 49512])
+  W = tf.Variable(tf.zeros([49512, 8]))
+  b = tf.Variable(tf.zeros([8]))
   y = tf.matmul(x, W) + b
   # Define the first convolutional layer
   W_conv1 = weight_variable([5, 5, 1, 32])
   b_conv1 = bias_variable([32])
-  x_image = tf.reshape(x, [-1,28,28,1])
+  x_image = tf.reshape(x, [-1,128,128,3])
   h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
   h_pool1 = max_pool_2x2(h_conv1)
   
@@ -63,11 +63,11 @@ def main(_):
   keep_prob = tf.placeholder(tf.float32)
   h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
   # Readout layer
-  W_fc2 = weight_variable([1024, 10])
-  b_fc2 = bias_variable([10])
+  W_fc2 = weight_variable([1024, 8])
+  b_fc2 = bias_variable([8])
   y_conv = tf.matmul(h_fc1_drop, W_fc2) + b_fc2
   # Define loss and optimizer
-  y_ = tf.placeholder(tf.float32, [None, 10])
+  y_ = tf.placeholder(tf.float32, [None, 8])
   # The raw formulation of cross-entropy,
   #
   #   tf.reduce_mean(-tf.reduce_sum(y_ * tf.log(tf.softmax(y)),
