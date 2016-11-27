@@ -34,21 +34,21 @@ def extract_images(folderPath):
   Raises:
     ValueError: If the bytestream does not start with 2051.
   """
-	files = os.listdir(folderPath)
-	if(len(files) == 0):
-		raise ValueError('There were no pictures to be read')
+  files = os.listdir(folderPath)
+  if(len(files) == 0):
+    raise ValueError('There were no pictures to be read')
 
-	file = files[0]
-	x = imread(folderPath + file, flatten=False, mode='RGB')
-	imageL = x.shape[0]
-	imageW = x.shape[1]
-	numImages = len(files)
-	data = np.zeros((numImages, imageL, imageW, 3))		# Channels = 3
+  file = files[0]
+  x = imread(folderPath + file, flatten=False, mode='RGB')
+  imageL = x.shape[0]
+  imageW = x.shape[1]
+  numImages = len(files)
+  data = np.zeros((numImages, imageL, imageW, 3))   # Channels = 3
 
-	for i in range(0, numImages):
-		fileName = files[i]
-		x = imread(folderPath + fileName, flatten=False, mode='RGB')	# returns ndarray (L x W x 3)
-		data[i,:,:,:] = x
+  for i in range(0, numImages):
+    fileName = files[i]
+    x = imread(folderPath + fileName, flatten=False, mode='RGB')  # returns ndarray (L x W x 3)
+    data[i,:,:,:] = x
   
   # The data is now a 4D numpy array [index, y, x, depth]
   return data
@@ -74,8 +74,8 @@ def extract_labels(nameOfCSVFile, one_hot=False, num_classes=8):
     ValueError: If the bystream doesn't start with 2049.
   """
   f = open(nameOfCSVFile)
-	labels = [(line.split(','))[1] for line in f]
-	labels = np.asarray(labels)[1:].astype(np.uint8) # starts at 1
+  labels = [(line.split(','))[1] for line in f]
+  labels = np.asarray(labels)[1:].astype(np.uint8) # starts at 1
   if one_hot:
     return dense_to_one_hot(labels, num_classes)
   return labels
@@ -111,9 +111,9 @@ class DataSet(object):
       # Convert shape from [num examples, rows, columns, depth]
       # to [num examples, rows*columns] (assuming depth == 1)
       if reshape:
-        assert images.shape[3] == 1
+        #assert images.shape[3] == 1
         images = images.reshape(images.shape[0],
-                                images.shape[1] * images.shape[2])
+                                images.shape[1] * images.shape[2] * 3)
       if dtype == dtypes.float32:
         # Convert from [0, 255] -> [0.0, 1.0].
         images = images.astype(numpy.float32)
@@ -175,12 +175,12 @@ def read_data_sets(train_dir,
                    reshape=True,
                    validation_size=1000):
   if fake_data:
-  	raise ValueError("We're not dealing with Fake Data\n")
+    raise ValueError("We're not dealing with Fake Data\n")
 
- 	cwd = os.getcwd()
-	folderPath = cwd + '/411a3/train/'
+  cwd = os.getcwd()
+  folderPath = cwd + '/411a3/train/'
   train_images = extract_images(folderPath)
-	train_file = cwd + '/411a3/train.csv'
+  train_file = cwd + '/411a3/train.csv'
   train_labels = extract_labels(train_file, one_hot=one_hot)
   total_size = len(train_images)
   test_size = 1000

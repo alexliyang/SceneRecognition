@@ -21,7 +21,7 @@ from __future__ import division
 from __future__ import print_function
 import argparse
 # Import data
-import our_input_data
+from our_input_data import *
 import tensorflow as tf
 FLAGS = None
 def weight_variable(shape):
@@ -36,7 +36,7 @@ def max_pool_2x2(x):
   return tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
                         strides=[1, 2, 2, 1], padding='SAME')
 def main(_):
-  mnist = input_data.read_data_sets(FLAGS.data_dir, one_hot=True)
+  mnist = read_data_sets(FLAGS.data_dir, one_hot=True, dtype=dtypes.uint8)
   # Create the model
   x = tf.placeholder(tf.float32, [None, 784])
   W = tf.Variable(tf.zeros([784, 10]))
