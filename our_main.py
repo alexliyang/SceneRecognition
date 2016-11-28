@@ -24,6 +24,19 @@ import argparse
 from our_input_data import *
 import tensorflow as tf
 FLAGS = None
+def variable_summaries(var, name):
+  """Attach a lot of summaries to a Tensor."""
+  with tf.name_scope('summaries'):
+    mean = tf.reduce_mean(var)
+    tf.scalar_summary('mean/' + name, mean)
+    with tf.name_scope('stddev'):
+      stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+    tf.scalar_summary('stddev/' + name, stddev)
+    tf.scalar_summary('max/' + name, tf.reduce_max(var))
+    tf.scalar_summary('min/' + name, tf.reduce_min(var))
+    tf.histogram_summary(name, var)
+
+
 def weight_variable(shape):
   initial = tf.truncated_normal(shape, stddev=0.1)
   return tf.Variable(initial)
@@ -50,20 +63,29 @@ def main(_):
   h_pool1 = max_pool_2x2(h_conv1)
   
   # Define the second convolutional layer
-  W_conv2 = weight_variable([5, 5, 16, 64])
-  b_conv2 = bias_variable([64])
+  W_conv2 = weight_variable([5, 5, 16, 32])
+  b_conv2 = bias_variable([32])
   h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
   h_pool2 = max_pool_2x2(h_conv2)
   # Define a fully connected layer
-  W_fc1 = weight_variable([15 * 15 * 64, 1024])
-  b_fc1 = bias_variable([1024])
-  h_pool2_flat = tf.reshape(h_pool2, [-1, 15*15*64])
-  h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
+
+  # Define the second convolutional layer
+  W_conv3 = weight_variable([5, 5, 32, 32])
+  b_conv3 = bias_variable([32])
+  h_conv3 = tf.nn.relu(conv2d(h_pool2, W_conv3) + b_conv3)
+  h_pool3 = max_pool_2x2(h_conv3)
+  # Define a fully connected layer
+
+
+  W_fc1 = weight_variable([5 * 5 * 32, 512])
+  b_fc1 = bias_variable([512])
+  h_pool3_flat = tf.reshape(h_pool3, [-1, 5*5*32])
+  h_fc1 = tf.nn.relu(tf.matmul(h_pool3_flat, W_fc1) + b_fc1)
   # Dropout 
   keep_prob = tf.placeholder(tf.float32)
   h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
   # Readout layer
-  W_fc2 = weight_variable([1024, 8])
+  W_fc2 = weight_variable([512, 8])
   b_fc2 = bias_variable([8])
   y_conv = tf.matmul(h_fc1_drop, W_fc2) + b_fc2
   # Define loss and optimizer
@@ -97,17 +119,29 @@ def main(_):
   correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(y_,1))
   accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
   sess.run(tf.initialize_all_variables())
+
+  test_length = 10
+  acc = np.zeros(test_length)
+  ce = np.zeros(test_length)
+
   
   # Shortened from 20000 to 1000 for now 
-  for i in range(1000):
+  for i in range(test_length):
     batch = mnist.train.next_batch(50)
+    acc[i] = accuracy.eval(feed_dict={x:batch[0], y_: batch[1], keep_prob: 1.0})
+    ce[i] = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_conv, y_))
     if i%100 == 0:
-      train_accuracy = accuracy.eval(feed_dict={
-          x:batch[0], y_: batch[1], keep_prob: 1.0})
-      print("step %d, training accuracy %g"%(i, train_accuracy))
+      print("step %d,\tacc: %g \tce: %g"%(i, acc[i], ce[i]))
     train_step.run(feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
   print("test accuracy %g"%accuracy.eval(feed_dict={
       x: mnist.test.images, y_: mnist.test.labels, keep_prob: 1.0}))
+
+  stats = {'train_acc' : acc,
+           'train_ce' : ce}
+  identifier = 0
+  stats_name = 'cnn_stats' + str(indentifier) + '.npz'
+  Save(stats_name, stats)
+
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('--data_dir', type=str, default='/tmp/data',
