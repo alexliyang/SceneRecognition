@@ -1,17 +1,3 @@
-# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -19,19 +5,6 @@ import argparse
 # Import data
 from our_input_data import *
 import tensorflow as tf
-FLAGS = None
-def variable_summaries(var, name):
-  """Attach a lot of summaries to a Tensor."""
-  with tf.name_scope('summaries'):
-    mean = tf.reduce_mean(var)
-    tf.scalar_summary('mean/' + name, mean)
-    with tf.name_scope('stddev'):
-      stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
-    tf.scalar_summary('stddev/' + name, stddev)
-    tf.scalar_summary('max/' + name, tf.reduce_max(var))
-    tf.scalar_summary('min/' + name, tf.reduce_min(var))
-    tf.histogram_summary(name, var)
-
 
 def weight_variable(shape, name):
   initial = tf.truncated_normal(shape, stddev=0.1)
@@ -49,7 +22,6 @@ def norm(x):
 
 def main(_):
   data = read_data_sets(FLAGS.data_dir, one_hot=True, dtype=dtypes.float32)
-  # Create the model
   learning_rate = tf.placeholder(tf.float32, shape=[])
   x = tf.placeholder(tf.float32, [None, 49152])
   W = tf.Variable(tf.zeros([49152, 8]))
@@ -107,7 +79,6 @@ def main(_):
   y_conv = tf.matmul(h_fc2, W_fc3) + b_fc3
   # Define loss and optimizer
   y_ = tf.placeholder(tf.float32, [None, 8])
-  init_op = tf.initialize_all_variables()
   saver = tf.train.Saver([W_conv1, b_conv1, W_conv2, b_conv2, W_fc1, b_fc1, W_fc2, b_fc2, W_fc3, b_fc3])
   sess = tf.InteractiveSession()
 
@@ -116,46 +87,17 @@ def main(_):
   train_step = tf.train.GradientDescentOptimizer(learning_rate=learning_rate).minimize(cross_entropy)
   correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(y_,1))
   accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-  sess.run(init_op)
 
-  test_length = 10
-  
-  # Arrays for Statistics
-  train_ce_list = []
-  train_acc_list = []
-  lr = 0.1
-  decay_rate = 0.1
-  decay_iters = 350
-  # Shortened from 20000 to 1000 for now 
-  for i in range(test_length):
-    batch = data.train.next_batch(50)
-    #print(tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_conv, y_)))
-    acc = accuracy.eval(feed_dict={x:batch[0], y_: batch[1]})
-    ce = cross_entropy.eval(feed_dict={x:batch[0], y_:batch[1]})
-    train_ce_list.append((i,ce))
-    train_acc_list.append((i,acc))
+  saver.restore(sess, "/tmp/model1.ckpt")
+  print("Model restored.")
+  #sess.run()
 
-    if i%100 == 0:
-      print("step %d,\tacc: %g \tce: %g"%(i, acc, ce))
-
-    if i%decay_iters == 0:
-      lr = lr * decay_rate
-
-    train_step.run(feed_dict={x: batch[0], y_: batch[1], learning_rate: lr})
-
-  # Just so we can keep track of different models / statistics
-  identifier = 1
-
-  # Save the Model to Memory
-  save_path = saver.save(sess, "/tmp/model" + str(identifier) + ".ckpt")
-  print("Model saved in file: %s" % save_path)
-
-  stats = {'train_acc' : train_acc_list,
-           'train_ce' : train_ce_list}
-
-  stats_name = 'cnn_stats' + str(identifier) + '.npz'
-  print('Writing to ' + stats_name)
-  np.savez_compressed(stats_name, **stats)
+  m = data.test.num_examples
+  test_acc = 0
+  for i in range(0, m):
+	test_acc += accuracy.eval(feed_dict={x:data.test.images[i:i+1], y_: data.test.labels[i:i+1]})
+  test_acc /= m
+  print("Testing Accuracy: %g" %test_acc)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
