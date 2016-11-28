@@ -48,6 +48,9 @@ def conv2d(x, W):
 def max_pool_2x2(x):
   return tf.nn.max_pool(x, ksize=[1, 3, 3, 1],
                         strides=[1, 3, 3, 1], padding='SAME')
+def norm(x):
+  return tf.nn.lrn(x, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75)
+
 def main(_):
   mnist = read_data_sets(FLAGS.data_dir, one_hot=True, dtype=dtypes.float32)
   # Create the model
@@ -55,39 +58,56 @@ def main(_):
   W = tf.Variable(tf.zeros([49152, 8]))
   b = tf.Variable(tf.zeros([8]))
   y = tf.matmul(x, W) + b
-  # Define the first convolutional layer
-  W_conv1 = weight_variable([5, 5, 3, 16])
-  b_conv1 = bias_variable([16])
+
+  # Conv Layer 1
+  W_conv1 = weight_variable([5, 5, 3, 64])
+  b_conv1 = bias_variable([64])
   x_image = tf.reshape(x, [-1,128,128,3])
   h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
-  h_pool1 = max_pool_2x2(h_conv1)
+
+  # Pooling Layer 1
+  h_pool1 = tf.nn.max_pool(h_conv1, ksize=[1, 3, 3, 1],
+                        strides=[1, 2, 2, 1], padding='SAME')
+
+  # Normalized Layer 1
+  h_norm1 = tf.nn.lrn(h_pool1, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75)
   
-  # Define the second convolutional layer
-  W_conv2 = weight_variable([5, 5, 16, 32])
-  b_conv2 = bias_variable([32])
-  h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
-  h_pool2 = max_pool_2x2(h_conv2)
-  # Define a fully connected layer
+  # Conv Layer 2
+  W_conv2 = weight_variable([5, 5, 64, 64])
+  b_conv2 = bias_variable([64])
+  h_conv2 = tf.nn.relu(conv2d(h_norm1, W_conv2) + b_conv2)
 
-  # Define the second convolutional layer
-  W_conv3 = weight_variable([5, 5, 32, 32])
-  b_conv3 = bias_variable([32])
-  h_conv3 = tf.nn.relu(conv2d(h_pool2, W_conv3) + b_conv3)
-  h_pool3 = max_pool_2x2(h_conv3)
-  # Define a fully connected layer
+  # Normalized Layer 2
+  h_norm2 = norm(h_conv2)
 
+  # Pooling Layer 2
+  h_pool2 = tf.nn.max_pool(h_norm2, ksize=[1, 3, 3, 1],
+                        strides=[1, 2, 2, 1], padding='SAME')
 
-  W_fc1 = weight_variable([5 * 5 * 32, 512])
-  b_fc1 = bias_variable([512])
-  h_pool3_flat = tf.reshape(h_pool3, [-1, 5*5*32])
-  h_fc1 = tf.nn.relu(tf.matmul(h_pool3_flat, W_fc1) + b_fc1)
+  dim = 1
+  for d in h_pool2.get_shape()[1:].as_list():
+    dim *= d
+  #h_pool2_flat = tf.reshape(h_pool2, [FLAGS.batch_size, dim])
+
+  # FC Layer 1
+  W_fc1 = weight_variable([dim, 384])
+  b_fc1 = bias_variable([384])
+  h_pool2_flat = tf.reshape(h_pool2, [-1, dim])
+  h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
+
+  # FC Layer 2
+  W_fc2 = weight_variable([384, 192])
+  b_fc2 = bias_variable([192])
+  h_fc1_flat = tf.reshape(h_fc1, [-1, 384])
+  h_fc2 = tf.nn.relu(tf.matmul(h_fc1_flat, W_fc2) + b_fc2)
+
   # Dropout 
-  keep_prob = tf.placeholder(tf.float32)
-  h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
+  # keep_prob = tf.placeholder(tf.float32)
+  # h_fc2_drop = tf.nn.dropout(h_fc1, keep_prob)
   # Readout layer
-  W_fc2 = weight_variable([512, 8])
-  b_fc2 = bias_variable([8])
-  y_conv = tf.matmul(h_fc1_drop, W_fc2) + b_fc2
+  W_fc3 = weight_variable([192, 8])
+  b_fc3 = bias_variable([8])
+  y_conv = tf.matmul(h_fc2, W_fc3) + b_fc3
   # Define loss and optimizer
   y_ = tf.placeholder(tf.float32, [None, 8])
   # The raw formulation of cross-entropy,
@@ -115,7 +135,7 @@ def main(_):
   #                                     y_: mnist.test.labels}))
   # Code from multiple neural nets import 
   cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_conv, y_))
-  train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
+  train_step = tf.train.GradientDescentOptimizer(1e-5).minimize(cross_entropy)
   correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(y_,1))
   accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
   sess.run(tf.initialize_all_variables())
@@ -130,20 +150,20 @@ def main(_):
   for i in range(test_length):
     batch = mnist.train.next_batch(50)
     #print(tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_conv, y_)))
-    acc = accuracy.eval(feed_dict={x:batch[0], y_: batch[1], keep_prob: 1.0})
-    ce = cross_entropy.eval(feed_dict={x:batch[0], y_:batch[1], keep_prob: 1.0})
+    acc = accuracy.eval(feed_dict={x:batch[0], y_: batch[1]})
+    ce = cross_entropy.eval(feed_dict={x:batch[0], y_:batch[1]})
     train_ce_list.append((i,ce))
     train_acc_list.append((i,acc))
 
     if i%100 == 0:
       print("step %d,\tacc: %g \tce: %g"%(i, acc, ce))
-    train_step.run(feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
+    train_step.run(feed_dict={x: batch[0], y_: batch[1]})
   print("test accuracy %g"%accuracy.eval(feed_dict={
-      x: mnist.test.images, y_: mnist.test.labels, keep_prob: 1.0}))
+      x: mnist.test.images, y_: mnist.test.labels}))
 
   stats = {'train_acc' : train_acc_list,
            'train_ce' : train_ce_list}
-  identifier = 0
+  identifier = 1
   stats_name = 'cnn_stats' + str(identifier) + '.npz'
   print('Writing to ' + stats_name)
   np.savez_compressed(stats_name, **stats)
