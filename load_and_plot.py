@@ -19,7 +19,6 @@ def DisplayPlot(train, ylabel, title, number=0):
     plt.figure(number)
     plt.clf()
     train = np.array(train)
-    valid = np.array(valid)
     plt.plot(train[:, 0], train[:, 1])
     plt.xlabel('Epoch')
     plt.ylabel(ylabel)

@@ -120,27 +120,33 @@ def main(_):
   accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
   sess.run(tf.initialize_all_variables())
 
-  test_length = 10
-  acc = np.zeros(test_length)
-  ce = np.zeros(test_length)
-
+  test_length = 5000
   
+  # Arrays for Statistics
+  train_ce_list = []
+  train_acc_list = []
+
   # Shortened from 20000 to 1000 for now 
   for i in range(test_length):
     batch = mnist.train.next_batch(50)
-    acc[i] = accuracy.eval(feed_dict={x:batch[0], y_: batch[1], keep_prob: 1.0})
-    ce[i] = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_conv, y_))
+    #print(tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_conv, y_)))
+    acc = accuracy.eval(feed_dict={x:batch[0], y_: batch[1], keep_prob: 1.0})
+    ce = cross_entropy.eval(feed_dict={x:batch[0], y_:batch[1], keep_prob: 1.0})
+    train_ce_list.append((i,ce))
+    train_acc_list.append((i,acc))
+
     if i%100 == 0:
-      print("step %d,\tacc: %g \tce: %g"%(i, acc[i], ce[i]))
+      print("step %d,\tacc: %g \tce: %g"%(i, acc, ce))
     train_step.run(feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
   print("test accuracy %g"%accuracy.eval(feed_dict={
       x: mnist.test.images, y_: mnist.test.labels, keep_prob: 1.0}))
 
-  stats = {'train_acc' : acc,
-           'train_ce' : ce}
+  stats = {'train_acc' : train_acc_list,
+           'train_ce' : train_ce_list}
   identifier = 0
-  stats_name = 'cnn_stats' + str(indentifier) + '.npz'
-  Save(stats_name, stats)
+  stats_name = 'cnn_stats' + str(identifier) + '.npz'
+  print('Writing to ' + stats_name)
+  np.savez_compressed(stats_name, **stats)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
