@@ -66,19 +66,19 @@ def main(_):
   h_pool1 = tf.nn.max_pool(h_conv1, ksize=[1, 3, 3, 1],
                         strides=[1, 2, 2, 1], padding='SAME')
 
-  # Normalized Layer 1
-  h_norm1 = tf.nn.lrn(h_pool1, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75)
+  # # Normalized Layer 1
+  # h_norm1 = tf.nn.lrn(h_pool1, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75)
   
   # Conv Layer 2
   W_conv2 = weight_variable([5, 5, 64, 64], name="W_conv2")
   b_conv2 = bias_variable([64], name="b_conv2")
-  h_conv2 = tf.nn.relu(conv2d(h_norm1, W_conv2) + b_conv2)
+  h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
 
-  # Normalized Layer 2
-  h_norm2 = norm(h_conv2)
+  # # Normalized Layer 2
+  # h_norm2 = norm(h_conv2)
 
   # Pooling Layer 2
-  h_pool2 = tf.nn.max_pool(h_norm2, ksize=[1, 3, 3, 1],
+  h_pool2 = tf.nn.max_pool(h_conv2, ksize=[1, 3, 3, 1],
                         strides=[1, 2, 2, 1], padding='SAME')
 
   dim = 1
@@ -92,59 +92,70 @@ def main(_):
   h_pool2_flat = tf.reshape(h_pool2, [-1, dim])
   h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
 
-  # FC Layer 2
-  W_fc2 = weight_variable([384, 192], name="W_fc2")
-  b_fc2 = bias_variable([192], name="b_fc2")
-  h_fc1_flat = tf.reshape(h_fc1, [-1, 384])
-  h_fc2 = tf.nn.relu(tf.matmul(h_fc1_flat, W_fc2) + b_fc2)
+  # # FC Layer 2
+  # W_fc2 = weight_variable([384, 192], name="W_fc2")
+  # b_fc2 = bias_variable([192], name="b_fc2")
+  # h_fc1_flat = tf.reshape(h_fc1, [-1, 384])
+  # h_fc2 = tf.nn.relu(tf.matmul(h_fc1_flat, W_fc2) + b_fc2)
 
   # Dropout 
-  # keep_prob = tf.placeholder(tf.float32)
-  # h_fc2_drop = tf.nn.dropout(h_fc1, keep_prob)
+  keep_prob = tf.placeholder(tf.float32, shape=[])
+  h_fc2_drop = tf.nn.dropout(h_fc1, keep_prob=0.5)
   # Readout layer
-  W_fc3 = weight_variable([192, 8], name="W_fc3")
-  b_fc3 = bias_variable([8], name="b_fc3")
-  y_conv = tf.matmul(h_fc2, W_fc3) + b_fc3
+  W_fc2 = weight_variable([384, 8], name="W_fc2")
+  b_fc2 = bias_variable([8], name="b_fc2")
+  y_conv = tf.matmul(h_fc2_drop, W_fc2) + b_fc2
   # Define loss and optimizer
   y_ = tf.placeholder(tf.float32, [None, 8])
+  cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_conv, y_))
+  train_step = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9).minimize(cross_entropy)
   init_op = tf.initialize_all_variables()
-  saver = tf.train.Saver([W_conv1, b_conv1, W_conv2, b_conv2, W_fc1, b_fc1, W_fc2, b_fc2, W_fc3, b_fc3])
+  saver = tf.train.Saver([W_conv1, b_conv1, W_conv2, b_conv2, W_fc1, b_fc1, W_fc2, b_fc2])
   sess = tf.InteractiveSession()
 
   # Code from multiple neural nets import
-  cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_conv, y_))
-  train_step = tf.train.GradientDescentOptimizer(learning_rate=learning_rate).minimize(cross_entropy)
+
+
   correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(y_,1))
   accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
   sess.run(init_op)
 
-  test_length = 10
+  test_length = 20000
+  termination_entropy = 0.7
   
   # Arrays for Statistics
   train_ce_list = []
   train_acc_list = []
-  lr = 0.1
-  decay_rate = 0.1
-  decay_iters = 350
-  # Shortened from 20000 to 1000 for now 
+  decay_rate = 1.0
+  lr = 0.01 * (1 / decay_rate)
+  decay_iters = 100
+  batch_size = 100
+
   for i in range(test_length):
-    batch = data.train.next_batch(50)
+    batch = data.train.next_batch(batch_size)
     #print(tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_conv, y_)))
-    acc = accuracy.eval(feed_dict={x:batch[0], y_: batch[1]})
+    acc = accuracy.eval(feed_dict={x:batch[0], y_: batch[1], keep_prob: 1.0})
     ce = cross_entropy.eval(feed_dict={x:batch[0], y_:batch[1]})
     train_ce_list.append((i,ce))
     train_acc_list.append((i,acc))
 
-    if i%100 == 0:
-      print("step %d,\tacc: %g \tce: %g"%(i, acc, ce))
+    # Print the Training Accuracy and Cross-Entropy
+    #if i%100 == 0:
+    print("step %d,\tacc: %g \tce: %g \tlr:%g"%(i, acc, ce, lr))
 
+    # Termination Condition for Cross-Entropy
+    if(ce <= termination_entropy):
+      print("Training Has Converged")
+      break
+
+    # Decay Learning Rate every decay_iters iterations
     if i%decay_iters == 0:
       lr = lr * decay_rate
 
-    train_step.run(feed_dict={x: batch[0], y_: batch[1], learning_rate: lr})
+    train_step.run(feed_dict={x: batch[0], y_: batch[1], learning_rate: lr, keep_prob: 0.5})
 
   # Just so we can keep track of different models / statistics
-  identifier = 1
+  identifier = 2
 
   # Save the Model to Memory
   save_path = saver.save(sess, "/tmp/model" + str(identifier) + ".ckpt")
