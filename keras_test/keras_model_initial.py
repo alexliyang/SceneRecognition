@@ -4,6 +4,8 @@ from keras.layers import Convolution2D, MaxPooling2D
 from keras.layers import Activation, Dropout, Flatten, Dense
 from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
 
+# Check this out
+
 model = Sequential()
 model.add(Convolution2D(16, 3, 3, border_mode='same', input_shape=(3, 128, 128)))
 # now model.output_shape == (None, 32, 128, 128)
