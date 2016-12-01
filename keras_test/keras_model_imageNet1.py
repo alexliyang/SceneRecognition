@@ -51,8 +51,8 @@ top_model_weights_path = 'bottleneck_fc_model.h5'
 
 train_data_dir = 'data/train'
 validation_data_dir = 'data/valid'
-nb_train_samples = 12284
-nb_validation_samples = 1001
+nb_train_samples = 11418
+nb_validation_samples = 1867
 nb_epoch = 50
 
 def save_bottlebeck_features():
@@ -134,7 +134,7 @@ def save_bottlebeck_features():
     # this is a similar generator, for validation data
     validation_generator = test_datagen.flow_from_directory(
             'data/valid',
-            target_size=(128, 128),
+            target_size=(224, 224),
             batch_size=16,
             class_mode='categorical',
             shuffle=False)
@@ -144,12 +144,12 @@ def save_bottlebeck_features():
     #bottleneck_features_validation = model.predict_generator(validation_generator, nb_valid_samples)
     
     #bottleneck_features_train = model.predict_generator(train_generator, nb_train_samples)
-    bottleneck_features_validation = model.predict_generator(validation_generator, 1001)
+    bottleneck_features_validation = model.predict_generator(validation_generator, 1867)
     print('done predicting the train generator')
     np.save(open('bottleneck_features_validation.npy', 'w'), bottleneck_features_validation)
     print('Saved the validation predict_generator outputs')
 
-    bottleneck_features_train = model.predict_generator(train_generator, 12284)
+    bottleneck_features_train = model.predict_generator(train_generator, 11418)
     print('done predicting the valid generator')
     np.save(open('bottleneck_features_train.npy', 'w'), bottleneck_features_train)
     print('Saved the train predict_generator outputs')
