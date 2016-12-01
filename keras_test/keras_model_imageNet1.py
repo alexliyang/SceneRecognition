@@ -1,39 +1,6 @@
 '''This script goes along the blog post
 "Building powerful image classification models using very little data"
 from blog.keras.io.
-It uses data that can be downloaded at:
-https://www.kaggle.com/c/dogs-vs-cats/data
-In our setup, we:
-- created a data/ folder
-- created train/ and validation/ subfolders inside data/
-- created cats/ and dogs/ subfolders inside train/ and validation/
-- put the cat pictures index 0-999 in data/train/cats
-- put the cat pictures index 1000-1400 in data/validation/cats
-- put the dogs pictures index 12500-13499 in data/train/dogs
-- put the dog pictures index 13500-13900 in data/validation/dogs
-So that we have 1000 training examples for each class, and 400 validation examples for each class.
-In summary, this is our directory structure:
-```
-data/
-    train/
-        dogs/
-            dog001.jpg
-            dog002.jpg
-            ...
-        cats/
-            cat001.jpg
-            cat002.jpg
-            ...
-    validation/
-        dogs/
-            dog001.jpg
-            dog002.jpg
-            ...
-        cats/
-            cat001.jpg
-            cat002.jpg
-            ...
-```
 '''
 import os
 import h5py
@@ -43,7 +10,6 @@ from keras.models import Sequential
 from keras.layers import Convolution2D, MaxPooling2D, ZeroPadding2D
 from keras.layers import Activation, Dropout, Flatten, Dense
 from keras.utils.np_utils import to_categorical
-
 
 # path to the model weights file.
 weights_path = 'vgg16_weights.h5'
@@ -134,7 +100,7 @@ def save_bottlebeck_features():
     # this is a similar generator, for validation data
     validation_generator = test_datagen.flow_from_directory(
             'data/valid',
-            target_size=(128, 128),
+            target_size=(224, 224),
             batch_size=16,
             class_mode='categorical',
             shuffle=False)
@@ -154,19 +120,16 @@ def save_bottlebeck_features():
     np.save(open('bottleneck_features_train.npy', 'w'), bottleneck_features_train)
     print('Saved the train predict_generator outputs')
 
-    
-    
-
 def train_top_model():
-    print('Training the model now ')
-    # The labels are infered here to be only from 2 classes and to have equal number. 
-    # This isn't the case for my data, so I'll have to do something else if I want to use this method 
-
+    print("Loading prevously generated data from VGG-16...")
+    # Load the output of our model when we it put through the previously trained layers of VGG
+    # We simply use this as data to train our fully-connected layers.
     train_data = np.load(open('bottleneck_features_train.npy'))
-    print('the shape of training features is ', train_data.shape) 
-    # I could just hard code this in...
+    validation_data = np.load(open('bottleneck_features_validation.npy'))
+    print('the shape of training features is ', train_data.shape)
+    print('the shape of validation features is ', validation_data.shape)
     
-    # [0] = 1816, [1] = 1686, [2] = 579, [3] = 357, [4] = 1432, [5] = 74, [6] = 14, [7] = 41
+    # Create two arrays for the validation and training labels based on how many images we have in these folders.
     cwd = os.getcwd()
     folder_names = ['1-structures/','2-indoor/','3-people/','4-animals/','5-plantlife/','6-food/','7-car/','8-sea/']
     train_labels = np.array([])
@@ -180,29 +143,29 @@ def train_top_model():
         files = os.listdir(folder_path)
         np.append(validation_labels, [i] * len(files))
 
-    print('the shape of training labels is ', train_labels.shape)
     train_labels_cat = to_categorical(train_labels)
-    print('the shape of training labels is ', train_labels_cat.shape)
-    
-    validation_data = np.load(open('bottleneck_features_validation.npy'))
-    print('the shape of validation features is ', validation_data.shape)
-    print('the shape of validation labels is ', validation_labels.shape)
     validation_labels_cat = to_categorical(validation_labels)
-    print('the shape of validation labels is ', validation_labels_cat.shape)
+    print('the shape of training labels is ', train_labels_cat.shape)
+    print('the shape of validation labels is ', validation_labels.shape)
 
+    print("Data and Labels Loaded")
+
+    # Create model of the fully-connected layers
     model = Sequential()
     model.add(Flatten(input_shape=(512, 4, 4)))
     model.add(Dense(256, activation='relu'))
     model.add(Dropout(0.25))
     model.add(Dense(8, activation='softmax')) # Was sigmoid
-
     model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy']) #was sparce_cat...
 
+    print('Training the model now...')
     model.fit(train_data, train_labels,
               nb_epoch=nb_epoch, batch_size=50,
               validation_data=(validation_data, validation_labels))
-    model.save_weights(top_model_weights_path)
 
+    model.save_weights(top_model_weights_path)  # top_model = FC weights.
 
-save_bottlebeck_features()
-train_top_model()
+if __name__ == "__main__":
+    #save_bottlebeck_features()  # Don't we only need to run this once!?
+    train_top_model()
+

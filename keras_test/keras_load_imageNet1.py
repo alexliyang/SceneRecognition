@@ -9,12 +9,17 @@ import numpy as np
 import os
 import h5py
 
-
-def imageNet_model(weights_path=None):
+def imageNet_model(vgg_weights_path=None, fc_weights_path=None):
+    """
+        This function takes in the path two two .h5 files which contain the weights
+        which were previously trained.
+        @arguments:
+        vgg_weights_path: path to the VGG-16 weights previously trained for us.
+        fc_weights_path: path to the fully-connected weights which we trained ourselves.
+    """
     # build the VGG16 network
-    img_width, img_height = 128, 128
     model = Sequential()
-    model.add(ZeroPadding2D((1, 1), input_shape=(3, img_width, img_height)))
+    model.add(ZeroPadding2D((1, 1), input_shape=(3, 224, 224)))
 
     model.add(Convolution2D(64, 3, 3, activation='relu', name='conv1_1'))
     model.add(ZeroPadding2D((1, 1)))
@@ -51,49 +56,65 @@ def imageNet_model(weights_path=None):
     model.add(Convolution2D(512, 3, 3, activation='relu', name='conv5_3'))
     model.add(MaxPooling2D((2, 2), strides=(2, 2)))
 
+    vgg_layers = model.layers
+
     model.add(Flatten(input_shape=(512, 4, 4)))
     model.add(Dense(256, activation='relu'))
     model.add(Dropout(0.25))
     model.add(Dense(8, activation='softmax')) # Was sigmoid
 
-    if weights_path:
-        model.load_weights(weights_path)
+    # Load the VGG weights into the model.
+    f = h5py.File(vgg_weights_path)
+    for k in range(f.attrs['nb_layers']):
+        if k >= len(vgg_layers):
+            # we don't look at the last (fully-connected) layers in the savefile
+            break
+        g = f['layer_{}'.format(k)]
+        weights = [g['param_{}'.format(p)] for p in range(g.attrs['nb_params'])]
+        model.layers[k].set_weights(weights)
+    f.close()
+
+    # Load the FC weights into the model.
+    f = h5py.File(fc_weights_path)
+     for k in range(f.attrs['nb_layers']):
+        g = f['layer_{}'.format(k)]
+        weights = [g['param_{}'.format(p)] for p in range(g.attrs['nb_params'])]
+        model.layers[k + vgg_layers].set_weights(weights)
+    f.close()
 
     return model
 
 if __name__ == "__main__":
-    files = None
-    #cwd = os.getcwd()  #Took out the cwd for now 
-    myPath = '/Users/sam/Google Drive/School/2016-17/CSC411/a3/keras_test/data/test/'
+    vgg_path = 'vgg16_weights.h5'
+    fc_path = 'bottleneck_fc_model.h5'
+    cwd = os.getcwd()
+    #myPath = '/Users/sam/Google Drive/School/2016-17/CSC411/a3/keras_test/data/test/'
+    my_path = cwd + '/data/test/'
+    
+    # Load the test image data into a numpy array: data[m,x,y,c]
     files = os.listdir(myPath)
-    #print(files)
     if(len(files) == 0):
         raise ValueError('There were no pictures to be read')
-
     file = files[0]
     x = imread(myPath + file, flatten=False, mode='RGB')
     imageL = x.shape[0]
     imageW = x.shape[1]
     numImages = len(files)
     data = np.zeros((numImages, imageL, imageW, 3))     # Channels = 3
-
     for i in range(0, numImages): 
         fileName = files[i]
         x = imread(myPath + fileName, flatten=False, mode='RGB')    # returns ndarray (L x W x 3)
         data[i,:,:,:] = x
+    np.transpose(data, [0,3,1,2])       # [n, 128, 128, 3] --> [n, 3, 128, 128]
 
-    # Get all the images and store them in the data array 
-
-    #np.save('test_mini_data', data)
-    #currently [n, 128, 128, 3] we want [n, 3, 128, 128]
-    np.transpose(data, [0,3,1,2])    
-
-    model = imageNet_model('bottleneck_fc_model.h5')  
+    # Load VGG16 weights and trained FC weights into the model
+    model = imageNet_model(vgg_path, fc_path)
     model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
     
     for i in range(0, numImages):
-        #image = np.resize(data[i], [0, data[i].shape[0], data[i].shape[1], data[i].shape[2]])
         image = np.resize(data[i], [1, 3, 128, 128])
+        # Need to resize the image here.
+
         out = model.predict(image)
         print np.argmax(out)
 
