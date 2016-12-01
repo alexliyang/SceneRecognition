@@ -172,13 +172,13 @@ def train_top_model():
     train_labels = np.array([])
     validation_labels = np.array([])
     for i in range(0,8):
-        folder_path = cwd + '/train/' + folder_names[i]
+        folder_path = cwd + '/data/train/' + folder_names[i]
         files = os.listdir(folder_path)
-        train_labels.append([i] * len(files))
+        np.append(train_labels, [i] * len(files))
     for i in range(0,8):
-        folder_path = cwd + '/valid/' + folder_names[i]
+        folder_path = cwd + '/data/valid/' + folder_names[i]
         files = os.listdir(folder_path)
-        train_labels.append([i] * len(files))
+        np.append(validation_labels, [i] * len(files))
 
     print('the shape of training labels is ', train_labels.shape)
     train_labels_cat = to_categorical(train_labels)
