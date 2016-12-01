@@ -27,7 +27,7 @@ model.add(Dropout(0.5))
 model.add(Dense(8))
 model.add(Activation('softmax'))
 
-model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy']) # Builds the model.
 
 # this is the augmentation configuration we will use for training
 train_datagen = ImageDataGenerator(
@@ -43,6 +43,9 @@ test_datagen = ImageDataGenerator(rescale=1./255)
 # this is a generator that will read pictures found in
 # subfolers of 'data/train', and indefinitely generate
 # batches of augmented image data
+
+# How random are these batches?
+
 train_generator = train_datagen.flow_from_directory(
         'data/train',  # this is the target directory
         target_size=(128, 128),  # all images will be resized to 128x128
@@ -56,9 +59,9 @@ validation_generator = test_datagen.flow_from_directory(
         batch_size=32,
         class_mode='categorical')
 
-model.fit_generator(
+model.fit_generator(                    # Starts the training
         train_generator,
-        samples_per_epoch=12284,
+        samples_per_epoch=12284,        # Why entire training set per epoch?
         nb_epoch=50,
         validation_data=validation_generator,
         nb_val_samples=1001)

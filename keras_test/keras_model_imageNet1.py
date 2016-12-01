@@ -48,8 +48,6 @@ from keras.utils.np_utils import to_categorical
 # path to the model weights file.
 weights_path = 'vgg16_weights.h5'
 top_model_weights_path = 'bottleneck_fc_model.h5'
-# dimensions of our images.
-img_width, img_height = 128, 128
 
 train_data_dir = 'data/train'
 validation_data_dir = 'data/valid'
@@ -57,14 +55,12 @@ nb_train_samples = 12284
 nb_validation_samples = 1001
 nb_epoch = 50
 
-
 def save_bottlebeck_features():
     datagen = ImageDataGenerator(rescale=1./255)
 
     # build the VGG16 network
     model = Sequential()
-    model.add(ZeroPadding2D((1, 1), input_shape=(3, img_width, img_height)))
-
+    model.add(ZeroPadding2D((1, 1), input_shape=(3, 224, 224)))
     model.add(Convolution2D(64, 3, 3, activation='relu', name='conv1_1'))
     model.add(ZeroPadding2D((1, 1)))
     model.add(Convolution2D(64, 3, 3, activation='relu', name='conv1_2'))
@@ -130,16 +126,18 @@ def save_bottlebeck_features():
  
     train_generator = train_datagen.flow_from_directory(
             'data/train',  # this is the target directory
-            target_size=(128, 128),  # all images will be resized to 128x128
+            target_size=(224, 224),  # all images will be resized to 128x128
             batch_size=16,
-            class_mode='sparse')  # since we use binary_crossentropy loss, we need binary labels
+            class_mode='categorical',
+            shuffle=False)  # since we use binary_crossentropy loss, we need binary labels
 
     # this is a similar generator, for validation data
     validation_generator = test_datagen.flow_from_directory(
             'data/valid',
             target_size=(128, 128),
             batch_size=16,
-            class_mode='sparse')
+            class_mode='categorical',
+            shuffle=False)
     print('Finished the model generators')
 
     # In order to use this code, I'll probably have to modify this predict_generator
@@ -169,19 +167,28 @@ def train_top_model():
     # I could just hard code this in...
     
     # [0] = 1816, [1] = 1686, [2] = 579, [3] = 357, [4] = 1432, [5] = 74, [6] = 14, [7] = 41
-    train_labels = np.array([0] * 1816 + [1] * 1686 + [2] * 1941 + [3] * 1848 + [4] * 1432 + [5] * 1238 + [6] * 1224 + [7] * 1099)
-    print('the shape of training labels is ', train_labels.shape) 
-    #train_labels_cat = to_categorical(train_labels)
-    #print('the shape of training labels is ', train_labels_cat.shape) 
+    cwd = os.getcwd()
+    folder_names = ['1-structures/','2-indoor/','3-people/','4-animals/','5-plantlife/','6-food/','7-car/','8-sea/']
+    train_labels = np.array([])
+    validation_labels = np.array([])
+    for i in range(0,8):
+        folder_path = cwd + '/train/' + folder_names[i]
+        files = os.listdir(folder_path)
+        train_labels.append([i] * len(files))
+    for i in range(0,8):
+        folder_path = cwd + '/valid/' + folder_names[i]
+        files = os.listdir(folder_path)
+        train_labels.append([i] * len(files))
+
+    print('the shape of training labels is ', train_labels.shape)
+    train_labels_cat = to_categorical(train_labels)
+    print('the shape of training labels is ', train_labels_cat.shape)
     
     validation_data = np.load(open('bottleneck_features_validation.npy'))
     print('the shape of validation features is ', validation_data.shape)
-    
-    # 0 = 298, [1] = 265, [2] = 121, [3] = 49, [4] = 239, [5] = 17, [6] = 5, [7] = 7
-    validation_labels = np.array([0] * 298 + [1] * 265 + [2] * 121 + [3] * 49 + [4] * 239 + [5] * 17 + [6] * 5 + [7] * 7)
     print('the shape of validation labels is ', validation_labels.shape)
-    #validation_labels_cat = to_categorical(validation_labels)
-    #print('the shape of validation labels is ', validation_labels_cat.shape)
+    validation_labels_cat = to_categorical(validation_labels)
+    print('the shape of validation labels is ', validation_labels_cat.shape)
 
     model = Sequential()
     model.add(Flatten(input_shape=(512, 4, 4)))

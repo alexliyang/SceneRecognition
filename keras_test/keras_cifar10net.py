@@ -3,7 +3,7 @@ from keras.models import Sequential
 from keras.layers import Convolution2D, MaxPooling2D
 from keras.layers import Activation, Dropout, Flatten, Dense
 from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
-from keras.callbacks import ModelCheckpoint
+from keras.callbacks import EarlyStopping
 
 
 model = Sequential()
@@ -64,7 +64,9 @@ validation_generator = test_datagen.flow_from_directory(
 
 # Add checkpointing capability 
 filepath="cifar10-weights-best.hdf5"
-checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
+#checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
+checkpoint = EarlyStopping(monitor='val_acc', min_delta=0.5, patience=5, verbose=1, mode='max')
+
 callbacks_list = [checkpoint]
 
 model.fit_generator(

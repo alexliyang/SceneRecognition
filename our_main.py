@@ -63,8 +63,8 @@ def main(_):
   h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
 
   # Pooling Layer 1
-  h_pool1 = tf.nn.max_pool(h_conv1, ksize=[1, 3, 3, 1],
-                        strides=[1, 2, 2, 1], padding='SAME')
+  #h_pool1 = tf.nn.max_pool(h_conv1, ksize=[1, 3, 3, 1],
+                        #strides=[1, 2, 2, 1], padding='SAME')
 
   # # Normalized Layer 1
   # h_norm1 = tf.nn.lrn(h_pool1, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75)
@@ -72,7 +72,7 @@ def main(_):
   # Conv Layer 2
   W_conv2 = weight_variable([5, 5, 64, 64], name="W_conv2")
   b_conv2 = bias_variable([64], name="b_conv2")
-  h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
+  h_conv2 = tf.nn.relu(conv2d(h_conv1, W_conv2) + b_conv2)
 
   # # Normalized Layer 2
   # h_norm2 = norm(h_conv2)
@@ -87,8 +87,8 @@ def main(_):
   #h_pool2_flat = tf.reshape(h_pool2, [FLAGS.batch_size, dim])
 
   # FC Layer 1
-  W_fc1 = weight_variable([dim, 384], name="W_fc1")
-  b_fc1 = bias_variable([384], name="b_fc1")
+  W_fc1 = weight_variable([dim, 64], name="W_fc1")
+  b_fc1 = bias_variable([64], name="b_fc1")
   h_pool2_flat = tf.reshape(h_pool2, [-1, dim])
   h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
 
@@ -102,7 +102,7 @@ def main(_):
   keep_prob = tf.placeholder(tf.float32, shape=[])
   h_fc2_drop = tf.nn.dropout(h_fc1, keep_prob=0.5)
   # Readout layer
-  W_fc2 = weight_variable([384, 8], name="W_fc2")
+  W_fc2 = weight_variable([64, 8], name="W_fc2")
   b_fc2 = bias_variable([8], name="b_fc2")
   y_conv = tf.matmul(h_fc2_drop, W_fc2) + b_fc2
   # Define loss and optimizer
@@ -126,10 +126,10 @@ def main(_):
   # Arrays for Statistics
   train_ce_list = []
   train_acc_list = []
-  decay_rate = 1.0
+  decay_rate = 0.01    # ** Set to 1.0 to turn off learning rate decay
   lr = 0.01 * (1 / decay_rate)
   decay_iters = 100
-  batch_size = 100
+  batch_size = 50
 
   for i in range(test_length):
     batch = data.train.next_batch(batch_size)
@@ -155,7 +155,7 @@ def main(_):
     train_step.run(feed_dict={x: batch[0], y_: batch[1], learning_rate: lr, keep_prob: 0.5})
 
   # Just so we can keep track of different models / statistics
-  identifier = 2
+  identifier = 3
 
   # Save the Model to Memory
   save_path = saver.save(sess, "/tmp/model" + str(identifier) + ".ckpt")
