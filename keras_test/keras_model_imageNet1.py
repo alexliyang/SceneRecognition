@@ -14,12 +14,12 @@ from keras.callbacks import EarlyStopping
 
 # path to the model weights file.
 weights_path = 'vgg16_weights.h5'
-top_model_weights_path = 'bottleneck_fc_model.h5'
+top_model_weights_path = 'bottleneck_fc_model_2.h5'
 
-train_data_dir = 'data/train'
-validation_data_dir = 'data/valid'
-nb_train_samples = 11418
-nb_validation_samples = 1867
+train_data_dir = 'data-original/train'
+validation_data_dir = 'data-original/valid'
+nb_train_samples = 5999 #11418
+nb_validation_samples = 1001 #1867
 nb_epoch = 50
 
 def save_bottlebeck_features():
@@ -92,7 +92,7 @@ def save_bottlebeck_features():
     test_datagen = ImageDataGenerator(rescale=1./255)
  
     train_generator = train_datagen.flow_from_directory(
-            'data/train',  # this is the target directory
+            'data-original/train',  # this is the target directory
             target_size=(224, 224),  # all images will be resized to 128x128
             batch_size=16,
             class_mode='categorical',
@@ -100,7 +100,7 @@ def save_bottlebeck_features():
 
     # this is a similar generator, for validation data
     validation_generator = test_datagen.flow_from_directory(
-            'data/valid',
+            'data-original/valid',
             target_size=(224, 224),
             batch_size=16,
             class_mode='categorical',
@@ -111,12 +111,12 @@ def save_bottlebeck_features():
     #bottleneck_features_validation = model.predict_generator(validation_generator, nb_valid_samples)
     
     #bottleneck_features_train = model.predict_generator(train_generator, nb_train_samples)
-    bottleneck_features_validation = model.predict_generator(validation_generator, 1867)
+    bottleneck_features_validation = model.predict_generator(validation_generator, 1001)
     print('done predicting the train generator')
     np.save(open('bottleneck_features_validation.npy', 'w'), bottleneck_features_validation)
     print('Saved the validation predict_generator outputs')
 
-    bottleneck_features_train = model.predict_generator(train_generator, 11418)
+    bottleneck_features_train = model.predict_generator(train_generator, 5999)
     print('done predicting the valid generator')
     np.save(open('bottleneck_features_train.npy', 'w'), bottleneck_features_train)
     print('Saved the train predict_generator outputs')
@@ -134,8 +134,11 @@ def train_top_model():
     cwd = os.getcwd()
     folder_names = ['1-structures/','2-indoor/','3-people/','4-animals/','5-plantlife/','6-food/','7-car/','8-sea/']
 
-    train_labels = np.array([0] * 1816 + [1] * 1686 + [2] * 1848 + [3] * 1668 + [4] * 1432 + [5] * 1041 + [6] * 1024 + [7] * 903)
-    validation_labels = np.array([0] * 298 + [1] * 265 + [2] * 214 + [3] * 229 + [4] * 239 + [5] * 214 + [6] * 205 + [7] * 203)
+    # train_labels = np.array([0] * 1816 + [1] * 1686 + [2] * 1848 + [3] * 1668 + [4] * 1432 + [5] * 1041 + [6] * 1024 + [7] * 903)
+    # validation_labels = np.array([0] * 298 + [1] * 265 + [2] * 214 + [3] * 229 + [4] * 239 + [5] * 214 + [6] * 205 + [7] * 203)
+
+    train_labels = np.array([0] * 1816 + [1] * 1686 + [2] * 579 + [3] * 357 + [4] * 1432 + [5] * 74 + [6] * 14 + [7] * 41)
+    validation_labels = np.array([0] * 298 + [1] * 265 + [2] * 121 + [3] * 49 + [4] * 239 + [5] * 17 + [6] * 5 + [7] * 7)
 
     print('the shape of training labels is ', train_labels.shape)
     print('the shape of validation labels is ', validation_labels.shape)
@@ -154,10 +157,10 @@ def train_top_model():
     model = Sequential()
     model.add(Flatten(input_shape=(512, 7, 7)))  # this converts our 3D feature maps to 1D feature vectors
     #model.add(Flatten(input_shape=train_data.shape[1:]))
-    model.add(Dense(256))
+    model.add(Dense(256, name='fc_1'))
     model.add(Activation('relu'))
     model.add(Dropout(0.5))
-    model.add(Dense(8))
+    model.add(Dense(8, name='fc_2'))
     model.add(Activation('softmax'))
 
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy']) #was sparce_cat...
@@ -166,16 +169,17 @@ def train_top_model():
     # Add checkpointing capability 
     filepath="cifar10-weights-best.hdf5"
     #checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
-    checkpoint = EarlyStopping(monitor='val_acc', min_delta=0.005, patience=5, verbose=1, mode='max')
+    #checkpoint = EarlyStopping(monitor='val_acc', min_delta=0.005, patience=5, verbose=1, mode='max')
 
-    callbacks_list = [checkpoint]
+    #callbacks_list = [checkpoint]
+    #callbacks=callbacks_list,
 
     print('Training the model now...')
     model.fit(train_data, train_labels_cat,
-              nb_epoch=nb_epoch, batch_size=50, callbacks=callbacks_list,
+              nb_epoch=nb_epoch, batch_size=50, 
               validation_data=(validation_data, validation_labels_cat))
 
-    model.save_weights(top_model_weights_path)  # top_model = FC weights.
+    model.save(top_model_weights_path)  # top_model = FC weights.
 
 if __name__ == "__main__":
     #save_bottlebeck_features()  # Don't we only need to run this once!?
