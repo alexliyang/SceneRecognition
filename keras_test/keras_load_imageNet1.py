@@ -112,7 +112,7 @@ if __name__ == "__main__":
     imageL = x.shape[0]
     imageW = x.shape[1]
     num_small = len(files)
-    
+
     data = np.zeros((num_small + num_big, imageL, imageW, 3))     # Channels = 3
     for i in range(0, num_small): 
         fileName = files[i]
@@ -133,9 +133,9 @@ if __name__ == "__main__":
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
     
     identifier = 0
-    predictions = np.zeros((num_small,2))
+    predictions = np.zeros((num_small + num_big, 2))
     p_file = 'predictions' + str(identifier) + '.csv'
-    for i in range(0, num_small):
+    for i in range(0, num_small + num_big):
         image = data[i,:,:,:]
         image = image.reshape([1, 3, 224, 224])
         out = model.predict(image)

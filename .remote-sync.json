@@ -1,0 +1,15 @@
+{
+  "uploadOnSave": true,
+  "useAtomicWrites": false,
+  "deleteLocal": false,
+  "hostname": "ec2-54-161-139-112.compute-1.amazonaws.com",
+  "target": "/home/ec2-user/SceneRecognition/",
+  "ignore": [
+    ".remote-sync.json",
+    ".git/**"
+  ],
+  "username": "ec2-user",
+  "keyfile": "C:\\Users\\Keenan\\Desktop\\Server2.pem",
+  "watch": [],
+  "transport": "scp"
+}
