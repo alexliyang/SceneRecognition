@@ -10,6 +10,7 @@ from keras.models import Sequential
 from keras.layers import Convolution2D, MaxPooling2D, ZeroPadding2D
 from keras.layers import Activation, Dropout, Flatten, Dense
 from keras.utils.np_utils import to_categorical
+from keras.callbacks import EarlyStopping
 
 # path to the model weights file.
 weights_path = 'vgg16_weights.h5'
@@ -132,36 +133,47 @@ def train_top_model():
     # Create two arrays for the validation and training labels based on how many images we have in these folders.
     cwd = os.getcwd()
     folder_names = ['1-structures/','2-indoor/','3-people/','4-animals/','5-plantlife/','6-food/','7-car/','8-sea/']
-    train_labels = np.array([])
-    validation_labels = np.array([])
-    for i in range(0,8):
-        folder_path = cwd + '/data/train/' + folder_names[i]
-        files = os.listdir(folder_path)
-        np.append(train_labels, [i] * len(files))
-    for i in range(0,8):
-        folder_path = cwd + '/data/valid/' + folder_names[i]
-        files = os.listdir(folder_path)
-        np.append(validation_labels, [i] * len(files))
+
+    train_labels = np.array([0] * 1816 + [1] * 1686 + [2] * 1848 + [3] * 1668 + [4] * 1432 + [5] * 1041 + [6] * 1024 + [7] * 903)
+    validation_labels = np.array([0] * 298 + [1] * 265 + [2] * 214 + [3] * 229 + [4] * 239 + [5] * 214 + [6] * 205 + [7] * 203)
+
+    print('the shape of training labels is ', train_labels.shape)
+    print('the shape of validation labels is ', validation_labels.shape)
 
     train_labels_cat = to_categorical(train_labels)
     validation_labels_cat = to_categorical(validation_labels)
     print('the shape of training labels is ', train_labels_cat.shape)
-    print('the shape of validation labels is ', validation_labels.shape)
+    print('the shape of validation labels is ', validation_labels_cat.shape)
 
     print("Data and Labels Loaded")
 
+    #train_data = train_data.transpose(0,2,3,1)
+    #print('the shape of training features is ', train_data.shape)
     # Create model of the fully-connected layers
+    
     model = Sequential()
-    model.add(Flatten(input_shape=(512, 4, 4)))
-    model.add(Dense(256, activation='relu'))
-    model.add(Dropout(0.25))
-    model.add(Dense(8, activation='softmax')) # Was sigmoid
-    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy']) #was sparce_cat...
+    model.add(Flatten(input_shape=(512, 7, 7)))  # this converts our 3D feature maps to 1D feature vectors
+    #model.add(Flatten(input_shape=train_data.shape[1:]))
+    model.add(Dense(256))
+    model.add(Activation('relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(8))
+    model.add(Activation('softmax'))
+
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy']) #was sparce_cat...
+
+    
+    # Add checkpointing capability 
+    filepath="cifar10-weights-best.hdf5"
+    #checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
+    checkpoint = EarlyStopping(monitor='val_acc', min_delta=0.005, patience=5, verbose=1, mode='max')
+
+    callbacks_list = [checkpoint]
 
     print('Training the model now...')
-    model.fit(train_data, train_labels,
-              nb_epoch=nb_epoch, batch_size=50,
-              validation_data=(validation_data, validation_labels))
+    model.fit(train_data, train_labels_cat,
+              nb_epoch=nb_epoch, batch_size=50, callbacks=callbacks_list,
+              validation_data=(validation_data, validation_labels_cat))
 
     model.save_weights(top_model_weights_path)  # top_model = FC weights.
 
