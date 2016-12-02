@@ -88,55 +88,44 @@ if __name__ == "__main__":
     vgg_path = 'vgg16_weights.h5'
     fc_path = 'bottleneck_fc_model_2.h5'
     cwd = os.getcwd()
-    #myPath = '/Users/sam/Google Drive/School/2016-17/CSC411/a3/keras_test/data/test/'
-    # small_path = cwd + '/data/test/'
-    # big_path = cwd + '/data/test_128/'
-    small_path = cwd + '/data/prediction-valid/'
-    big_path = cwd + '/data/prediction-valid/'
-    
-    # Load the test image data into a numpy array: data[m,x,y,c]
-    files = os.listdir(big_path)
-    num_big = len(files)
-    files = os.listdir(small_path)
-    if(len(files) == 0):
-        raise ValueError('There were no pictures to be read')
-    file = files[0]
-    x = imread(small_path + file, flatten=False, mode='RGB')
-    x = imresize(x, (224,224))
-    imageL = x.shape[0]
-    imageW = x.shape[1]
-    num_small = len(files)
-
-    data = np.zeros((num_small + num_big, imageL, imageW, 3))     # Channels = 3
-    for i in range(0, num_small): 
-        fileName = files[i]
-        x = imread(small_path + fileName, flatten=False, mode='RGB')    # returns ndarray (L x W x 3)
-        x = imresize(x, (224,224))
-        data[i,:,:,:] = x
-    files = os.listdir(big_path)
-    for i in range(num_small, num_small + num_big):
-        fileName = files[i - num_small]
-        x = imread(big_path + fileName, flatten=False, mode='RGB')    # returns ndarray (L x W x 3)
-        x = imresize(x, (224,224))
-        data[i,:,:,:] = x  
-
-    data = data.transpose(0,3,1,2)       # [n, 224, 224, 3] --> [n, 3, 224, 224]
+    small_path = cwd + '/data/test-1/'
+    big_path = cwd + '/data/test_128-1/'
+    num_small = 970
+    num_big = 2000
 
     # Load VGG16 weights and trained FC weights into the model
     model = imageNet_model(vgg_path, fc_path)
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
     
-    identifier = 1
     predictions = np.zeros((num_small + num_big, 2))
-    p_file = 'predictions' + str(identifier) + '.csv'
-    for i in range(0, num_small + num_big):
-        image = data[i,:,:,:]
-        image = image.reshape([1, 3, 224, 224])
-        out = model.predict(image)
-        predict = np.argmax(out)
-        print(predict)
-        predictions[i,:] = [int(i + 1), int(predict + 1)]
 
+    test_datagen = ImageDataGenerator(rescale=1./255)
+    small_generator = test_datagen.flow_from_directory(
+                small_path,
+                target_size=(224,224),
+                batch_size=16,
+                class_mode='categorical',
+                shuffle=False)
+    big_generator = test_datagen.flow_from_directory(
+                big_path,
+                target_size=(224,224),
+                batch_size=16,
+                class_mode='categorical',
+                shuffle=False)
+    small_output = model.predict_generator(small_generator,num_small)
+    big_output = model.predict_generator(big_generator,num_big)
+
+    for i in range(0, num_small):
+        predict = small_output[i,:]
+        predict = np.argmax(predict)
+        predictions[i,:] = [int(i + 1), int(predict + 1)]
+    for i in range(num_small, num_small + num_big):
+        predict = big_output[i,:]
+        predict = np.argmax(predict)
+        predictions[i,:] = [int(i + 1), int(predict + 1)]        
+
+    identifier = 3
+    p_file = 'predictions' + str(identifier) + '.csv'
     np.savetxt(p_file, predictions, fmt='%d', delimiter=",")
     with open(p_file, 'r+') as f:
         content = f.read()
