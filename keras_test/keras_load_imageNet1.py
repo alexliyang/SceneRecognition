@@ -5,6 +5,7 @@ from keras.layers import Activation, Dropout, Flatten, Dense
 from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
 import PIL
 from scipy.ndimage import imread
+from scipy.misc import imresize
 import numpy as np
 import os
 import h5py
@@ -97,6 +98,7 @@ if __name__ == "__main__":
         raise ValueError('There were no pictures to be read')
     file = files[0]
     x = imread(myPath + file, flatten=False, mode='RGB')
+    x = imresize(x, (224,224))
     imageL = x.shape[0]
     imageW = x.shape[1]
     numImages = len(files)
@@ -104,17 +106,26 @@ if __name__ == "__main__":
     for i in range(0, numImages): 
         fileName = files[i]
         x = imread(myPath + fileName, flatten=False, mode='RGB')    # returns ndarray (L x W x 3)
+        x = imresize(x, (224,224))
         data[i,:,:,:] = x
-    np.transpose(data, [0,3,1,2])       # [n, 128, 128, 3] --> [n, 3, 128, 128]
+    data = data.transpose(0,3,1,2)       # [n, 224, 224, 3] --> [n, 3, 224, 224]
 
     # Load VGG16 weights and trained FC weights into the model
     model = imageNet_model(vgg_path, fc_path)
-    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
     
+    identifier = 0
+    predictions = np.zeros(numImages,2)
+    p_file = 'predictions' + str(identifier) + '.csv'
     for i in range(0, numImages):
-        image = np.resize(data[i], [1, 3, 128, 128])
-        # Need to resize the image here.
-
+        image = data[i,:,:,:]
+        image = image.reshape([1, 3, 224, 224])
         out = model.predict(image)
-        print np.argmax(out)
-
+        predict = argmax(out)
+        print(predict)
+        predictions(i,:) = [i + 1, predict]
+        numpy.savetxt(p_file, a, delimiter=",")
+    with open(p_file, 'r+') as f:
+        content = f.read()
+        f.seek(0, 0)
+        f.write('Id,Prediction' + '\n' + content)
