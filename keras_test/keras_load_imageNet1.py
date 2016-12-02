@@ -80,16 +80,8 @@ def imageNet_model(vgg_weights_path=None, fc_weights_path=None):
         model.layers[k].set_weights(weights)
     f.close()
 
-    # # Load the FC weights into the model.
-    # f = h5py.File(fc_weights_path)
-    # for k in range(f.attrs['nb_layers']):
-    #     g = f['layer_{}'.format(k)]
-    #     weights = [g['param_{}'.format(p)] for p in range(g.attrs['nb_params'])]
-    #     model.layers[k + vgg_layers].set_weights(weights)
-    # f.close()
     model.load_weights(fc_weights_path, by_name=True)
-
-
+    
     return model
 
 if __name__ == "__main__":
