@@ -86,11 +86,13 @@ def imageNet_model(vgg_weights_path=None, fc_weights_path=None):
 
 if __name__ == "__main__":
     vgg_path = 'vgg16_weights.h5'
-    fc_path = 'bottleneck_fc_model.h5'
+    fc_path = 'bottleneck_fc_model_2.h5'
     cwd = os.getcwd()
     #myPath = '/Users/sam/Google Drive/School/2016-17/CSC411/a3/keras_test/data/test/'
-    small_path = cwd + '/data/test/'
-    big_path = cwd + '/data/test_128/'
+    # small_path = cwd + '/data/test/'
+    # big_path = cwd + '/data/test_128/'
+    small_path = cwd + '/data/prediction-valid/'
+    big_path = cwd + '/data/prediction-valid/'
     
     # Load the test image data into a numpy array: data[m,x,y,c]
     files = os.listdir(big_path)
@@ -124,7 +126,7 @@ if __name__ == "__main__":
     model = imageNet_model(vgg_path, fc_path)
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
     
-    identifier = 0
+    identifier = 1
     predictions = np.zeros((num_small + num_big, 2))
     p_file = 'predictions' + str(identifier) + '.csv'
     for i in range(0, num_small + num_big):
