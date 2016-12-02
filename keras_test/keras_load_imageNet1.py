@@ -86,7 +86,7 @@ def imageNet_model(vgg_weights_path=None, fc_weights_path=None):
 
 if __name__ == "__main__":
     vgg_path = 'vgg16_weights.h5'
-    fc_path = 'bottleneck_fc_model_2.h5'
+    fc_path = 'bottleneck_fc_model_3.h5'
     cwd = os.getcwd()
     small_path = cwd + '/data/test-1/'
     big_path = cwd + '/data/test_128-1/'
@@ -120,11 +120,11 @@ if __name__ == "__main__":
         predict = np.argmax(predict)
         predictions[i,:] = [int(i + 1), int(predict + 1)]
     for i in range(num_small, num_small + num_big):
-        predict = big_output[i,:]
+        predict = big_output[i-num_small,:]
         predict = np.argmax(predict)
         predictions[i,:] = [int(i + 1), int(predict + 1)]        
 
-    identifier = 3
+    identifier = 4
     p_file = 'predictions' + str(identifier) + '.csv'
     np.savetxt(p_file, predictions, fmt='%d', delimiter=",")
     with open(p_file, 'r+') as f:
