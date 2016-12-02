@@ -120,7 +120,7 @@ def main(_):
   accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
   sess.run(init_op)
 
-  test_length = 20000
+  test_length = 25
   termination_entropy = 0.7
   
   # Arrays for Statistics
@@ -155,7 +155,7 @@ def main(_):
     train_step.run(feed_dict={x: batch[0], y_: batch[1], learning_rate: lr, keep_prob: 0.5})
 
   # Just so we can keep track of different models / statistics
-  identifier = 3
+  identifier = 1
 
   # Save the Model to Memory
   save_path = saver.save(sess, "/tmp/model" + str(identifier) + ".ckpt")

@@ -60,7 +60,7 @@ def imageNet_model(vgg_weights_path=None, fc_weights_path=None):
     vgg_layers = len(model.layers)
 
     model.add(Flatten())
-    model.add(Dense(256, activation='relu', name='fc_1'))
+    model.add(Dense(512, activation='relu', name='fc_1'))
     model.add(Dropout(0.5))
     model.add(Dense(8, activation='softmax', name='fc_2')) # Was sigmoid
 
@@ -86,7 +86,7 @@ def imageNet_model(vgg_weights_path=None, fc_weights_path=None):
 
 if __name__ == "__main__":
     vgg_path = 'vgg16_weights.h5'
-    fc_path = 'bottleneck_fc_model_3.h5'
+    fc_path = 'bottleneck_fc_model_2.h5'
     cwd = os.getcwd()
     small_path = cwd + '/data/test-1/'
     big_path = cwd + '/data/test_128-1/'
